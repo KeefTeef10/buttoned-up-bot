@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, X } from "lucide-react";
+import { Bot, MessageCircle, X, Sparkles } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import { toast } from "@/components/ui/use-toast";
@@ -22,11 +22,12 @@ const ChatBot = ({ isOpen, onOpenChange }: ChatBotProps) => {
     { content: "Hello! How can I assist you today?", isUser: false },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,6 +37,7 @@ const ChatBot = ({ isOpen, onOpenChange }: ChatBotProps) => {
     // Add user message to chat
     setMessages((prev) => [...prev, { content: message, isUser: true }]);
     setIsLoading(true);
+    setIsTyping(true);
 
     try {
       // This is a placeholder for the actual API call to the LLM
@@ -54,6 +56,7 @@ const ChatBot = ({ isOpen, onOpenChange }: ChatBotProps) => {
       });
     } finally {
       setIsLoading(false);
+      setIsTyping(false);
     }
   };
 
@@ -61,18 +64,21 @@ const ChatBot = ({ isOpen, onOpenChange }: ChatBotProps) => {
   // Replace this with actual API call to your backend
   const mockLLMResponse = async (userMessage: string): Promise<string> => {
     // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     
-    // Simple response logic - in reality, you would call your backend API
-    // that interfaces with the open-mistral-8x7b model
+    // More detailed responses
     if (userMessage.toLowerCase().includes("hello") || userMessage.toLowerCase().includes("hi")) {
-      return "Hello there! How can I help you today?";
+      return "Hello there! I'm your AI assistant powered by the open-mistral-8x7b model. How can I help you today?";
     } else if (userMessage.toLowerCase().includes("how are you")) {
-      return "I'm just an AI assistant, but thanks for asking! How can I assist you?";
+      return "I'm just an AI assistant, but thanks for asking! I'm here and ready to assist you with any questions or tasks you might have.";
     } else if (userMessage.toLowerCase().includes("bye")) {
-      return "Goodbye! Feel free to return if you have more questions.";
+      return "Goodbye! Feel free to return if you have more questions. I'll be here to assist you.";
+    } else if (userMessage.toLowerCase().includes("help")) {
+      return "I can help you with information, answering questions, brainstorming ideas, or solving problems. Just let me know what you'd like assistance with!";
+    } else if (userMessage.toLowerCase().includes("mistral") || userMessage.toLowerCase().includes("llm")) {
+      return "I'm powered by the open-mistral-8x7b large language model, which is designed to provide helpful, accurate, and safe responses to a wide variety of questions and tasks.";
     } else {
-      return "I'm a placeholder response. In a real implementation, I would be powered by the open-mistral-8x7b model. How else can I help you?";
+      return "I'm analyzing your message using the open-mistral-8x7b model. In a full implementation, I would provide a detailed response based on that powerful language model. How else can I assist you today?";
     }
   };
 
@@ -82,8 +88,9 @@ const ChatBot = ({ isOpen, onOpenChange }: ChatBotProps) => {
         <DialogHeader className="border-b p-4">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              AI Assistant
+              <Bot className="h-5 w-5" />
+              <span>AI Assistant</span>
+              <Sparkles className="h-4 w-4 text-amber-400" />
             </DialogTitle>
             <Button
               variant="ghost"
@@ -104,6 +111,17 @@ const ChatBot = ({ isOpen, onOpenChange }: ChatBotProps) => {
               isUser={msg.isUser}
             />
           ))}
+          
+          {isTyping && (
+            <div className="flex items-center gap-2 mr-auto mb-4 bg-muted rounded-lg p-4 max-w-[80%]">
+              <div className="flex space-x-1">
+                <div className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="h-2 w-2 rounded-full bg-primary animate-bounce"></div>
+              </div>
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
         
