@@ -2,6 +2,8 @@
 import React from "react";
 import ChatBotWidget from "@/components/ChatBotWidget";
 import { Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   return (
@@ -19,6 +21,15 @@ const Index = () => {
         <p className="text-xl text-gray-600 mb-8">
           Experience the power of conversational AI right at your fingertips. Click the chat button in the bottom right to start a conversation!
         </p>
+        
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <Link to="/prompt-generator">
+            <Button className="px-6 py-6 text-lg">
+              <Sparkles className="mr-2 h-5 w-5" />
+              Try our AI Prompt Generator
+            </Button>
+          </Link>
+        </div>
         
         <div className="bg-white/70 backdrop-blur-sm p-4 rounded-lg shadow-sm border border-gray-200">
           <p className="text-gray-500 flex items-center justify-center gap-2">
