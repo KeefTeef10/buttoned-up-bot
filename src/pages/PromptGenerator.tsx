@@ -1,11 +1,13 @@
-
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Copy, Send, X, Sparkles } from "lucide-react";
+import { Copy, Send, X, Sparkles, Crown, LogOut, Settings, User } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import ChatBotWidget from "@/components/ChatBotWidget";
+import { useUser } from "@/context/UserContext";
+import SubscriptionModal from "@/components/subscription/SubscriptionModal";
 
 // Purpose phrases mapping
 const purposePhrases = {
@@ -71,6 +73,18 @@ const audiencePhrases = {
 };
 
 const PromptGenerator = () => {
+  const navigate = useNavigate();
+  const { user, logout, checkPromptAvailability, subscribe } = useUser();
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
+
   // Form state
   const [purpose, setPurpose] = useState("explain");
   const [topic, setTopic] = useState("");
@@ -146,7 +160,20 @@ const PromptGenerator = () => {
       });
   };
 
-  // Send prompt to AI
+  // Handle subscription
+  const handleSubscribe = async (plan: "monthly" | "yearly") => {
+    setIsSubscribing(true);
+    try {
+      const success = await subscribe(plan);
+      if (success) {
+        setIsSubscriptionModalOpen(false);
+      }
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  // Send prompt to AI with tier restrictions
   const handleSend = () => {
     if (!topic || topic.trim() === "" || generatedPrompt.includes("[topic]")) {
       toast({
@@ -157,26 +184,103 @@ const PromptGenerator = () => {
       return;
     }
     
+    // Check for premium features use by free users
+    if (user?.tier !== "premium") {
+      // Check if trying to use advanced features
+      if (instructions.length > 50) {
+        showPremiumFeatureMessage("Advanced customization with detailed instructions");
+        return;
+      }
+      
+      // Enforce prompt limit for free users
+      const canSendPrompt = checkPromptAvailability();
+      if (!canSendPrompt) {
+        setIsSubscriptionModalOpen(true);
+        return;
+      }
+    }
+    
     setIsResponseVisible(true);
     setIsLoading(true);
     
     // Simulate AI response (would be replaced with actual API call)
     setTimeout(() => {
       setIsLoading(false);
-      setAiResponse(
-        `This is a simulated response to your prompt about "${topic}". In a real implementation, this would be connected to the ${aiModel} API.\n\nYour prompt was:\n${generatedPrompt}\n\nWith a proper API integration, you would receive an actual AI-generated response based on your prompt configuration.`
-      );
+      
+      // Generate appropriate response based on user tier
+      let responseContent = "";
+      
+      if (user?.tier === "premium") {
+        responseContent = `This is a premium-tier response to your prompt about "${topic}". In a real implementation, this would be a more detailed and customized response with up to 300 words.\n\nYour prompt was:\n${generatedPrompt}\n\nWith a proper API integration, you would receive an actual AI-generated response based on your premium-level prompt configuration.`;
+      } else {
+        responseContent = `This is a free-tier response to your prompt about "${topic}". This response is limited to basic customization and shorter length.\n\nYour prompt was:\n${generatedPrompt}\n\nUpgrade to Premium for more detailed and customized responses!`;
+      }
+      
+      setAiResponse(responseContent);
     }, 2000);
   };
 
+  const showPremiumFeatureMessage = (feature: string) => {
+    toast({
+      title: "Premium Feature",
+      description: `${feature} is available to Premium users only. Upgrade for $5/month or $50/year to unlock unlimited prompts and advanced options!`,
+      variant: "destructive",
+    });
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/auth");
+  };
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <header className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-primary mb-2 flex items-center justify-center gap-2">
-          AI Prompt Generator <Sparkles className="h-5 w-5 text-amber-400" />
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">Design effective prompts for better AI responses</p>
+      <header className="flex justify-between items-center mb-8">
+        <div className="text-center flex-1">
+          <h1 className="text-3xl font-bold text-primary mb-2 flex items-center justify-center gap-2">
+            AI Prompt Generator <Sparkles className="h-5 w-5 text-amber-400" />
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300">Design effective prompts for better AI responses</p>
+        </div>
+        
+        {/* User info and actions */}
+        <div className="flex items-center gap-4">
+          {user.tier === "premium" && (
+            <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+              <Crown className="h-4 w-4" />
+              <span>Premium</span>
+            </div>
+          )}
+          
+          <div className="flex gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
+              <Settings className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
       </header>
+      
+      {user.tier === "free" && (
+        <div className="bg-primary/10 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="text-sm">
+              <p className="font-medium">Free Tier: {user.promptsUsedToday}/{user.promptsLimit} prompts used today</p>
+              <p className="text-muted-foreground">Upgrade to Premium for unlimited prompts and advanced features</p>
+            </div>
+          </div>
+          <Button size="sm" onClick={() => setIsSubscriptionModalOpen(true)}>
+            <Crown className="mr-2 h-4 w-4" />
+            Upgrade
+          </Button>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Prompt Builder Form */}
@@ -281,13 +385,20 @@ const PromptGenerator = () => {
                 id="length"
                 value={length}
                 onChange={(e) => setLength(e.target.value)}
+                disabled={user.tier !== "premium" && (length === "detailed" || length === "comprehensive")}
                 className="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary text-base"
               >
                 <option value="concise">Concise (1-2 paragraphs)</option>
                 <option value="moderate">Moderate (3-5 paragraphs)</option>
-                <option value="detailed">Detailed (6-8 paragraphs)</option>
-                <option value="comprehensive">Comprehensive (9+ paragraphs)</option>
+                <option value="detailed">Detailed (6-8 paragraphs) {user.tier !== "premium" && "- Premium Only"}</option>
+                <option value="comprehensive">Comprehensive (9+ paragraphs) {user.tier !== "premium" && "- Premium Only"}</option>
               </select>
+              {user.tier !== "premium" && (length === "detailed" || length === "comprehensive") && (
+                <p className="text-sm text-yellow-600 mt-1 flex items-center gap-1">
+                  <Crown className="h-3 w-3" />
+                  Premium feature - please upgrade
+                </p>
+              )}
             </div>
             
             {/* Target Audience */}
@@ -316,16 +427,25 @@ const PromptGenerator = () => {
             {/* Additional Instructions */}
             <div>
               <label htmlFor="instructions" className="block text-sm font-medium mb-1">
-                Additional Instructions or Context (optional)
+                Additional Instructions or Context {user.tier !== "premium" && "(Limited for Free Users)"}
               </label>
               <Textarea
                 id="instructions"
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
-                placeholder="Add any specific requirements, constraints, or additional context..."
+                placeholder={user.tier === "premium" 
+                  ? "Add any specific requirements, constraints, or additional context..." 
+                  : "Limited to basic instructions for Free Users. Upgrade for advanced customization."
+                }
                 className="w-full resize-none"
                 rows={3}
               />
+              {user.tier !== "premium" && instructions.length > 50 && (
+                <p className="text-sm text-yellow-600 mt-1 flex items-center gap-1">
+                  <Crown className="h-3 w-3" />
+                  Detailed instructions are a Premium feature
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -439,6 +559,14 @@ const PromptGenerator = () => {
           </CardContent>
         </Card>
       )}
+      
+      {/* Subscription Modal */}
+      <SubscriptionModal 
+        isOpen={isSubscriptionModalOpen}
+        onClose={() => setIsSubscriptionModalOpen(false)}
+        onSubscribe={handleSubscribe}
+        isLoading={isSubscribing}
+      />
       
       <ChatBotWidget />
     </div>

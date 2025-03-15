@@ -1,11 +1,14 @@
 
 import React from "react";
 import ChatBotWidget from "@/components/ChatBotWidget";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/context/UserContext";
 
 const Index = () => {
+  const { user } = useUser();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
       <div className="text-center max-w-2xl px-4">
@@ -19,16 +22,39 @@ const Index = () => {
         </h1>
         
         <p className="text-xl text-gray-600 mb-8">
-          Experience the power of conversational AI right at your fingertips. Click the chat button in the bottom right to start a conversation!
+          Experience the power of conversational AI and create perfect prompts with our AI Prompt Generator. Free and premium options available!
         </p>
         
         <div className="flex flex-col items-center gap-4 mb-8">
-          <Link to="/prompt-generator">
-            <Button className="px-6 py-6 text-lg">
-              <Sparkles className="mr-2 h-5 w-5" />
-              Try our AI Prompt Generator
-            </Button>
-          </Link>
+          {user ? (
+            <div className="space-y-4">
+              <Link to="/prompt-generator">
+                <Button className="px-6 py-6 text-lg">
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Go to AI Prompt Generator
+                </Button>
+              </Link>
+              <div className="flex gap-4 justify-center">
+                <Link to="/settings">
+                  <Button variant="outline">
+                    Account Settings
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Link to="/auth">
+                <Button className="px-6 py-6 text-lg">
+                  <ArrowRight className="mr-2 h-5 w-5" />
+                  Sign In / Sign Up
+                </Button>
+              </Link>
+              <p className="text-sm text-gray-500">
+                Create an account to start generating AI prompts
+              </p>
+            </div>
+          )}
         </div>
         
         <div className="bg-white/70 backdrop-blur-sm p-4 rounded-lg shadow-sm border border-gray-200">
